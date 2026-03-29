@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vocabulary Lookup</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <h1 class="title">Vocabulary Translator</h1>
+      <p class="subtitle">Translate words with Supabase as the shared data source.</p>
+
+      <label class="field-label" for="wordInput">English word</label>
+      <input
+        id="wordInput"
+        class="text-input"
+        type="text"
+        placeholder="Enter a word"
+        autocomplete="off"
+      />
+
+      <div class="actions">
+        <button id="translateButton" class="button button-primary" type="button">
+          Translate
+        </button>
+      </div>
+
+      <section class="result-card">
+        <p class="result-label">Result</p>
+        <p id="resultWord" class="result-word">No word selected</p>
+        <p id="resultMeaning" class="result-meaning">Look up a word to see the translated main meaning.</p>
+        <div class="other-meanings">
+          <p class="other-meanings-label">Other meanings</p>
+          <ul id="resultMeaningList" class="meaning-list">
+            <li>No additional meanings.</li>
+          </ul>
+        </div>
+        <p id="resultMeta" class="result-meta"></p>
+      </section>
+
+      <p id="statusMessage" class="status" aria-live="polite"></p>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

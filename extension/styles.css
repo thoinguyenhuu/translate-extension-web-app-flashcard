@@ -1,0 +1,153 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #f4f7fb;
+  color: #1f2937;
+}
+
+body {
+  margin: 0;
+}
+
+.popup {
+  width: 360px;
+  padding: 16px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.subtitle {
+  margin: 0 0 16px;
+  color: #5b6473;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.field-label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.text-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #ffffff;
+}
+
+.text-input:focus {
+  outline: 2px solid #9dc0ff;
+  border-color: #6ea8fe;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.button {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button-primary {
+  background: #0f62fe;
+  color: #ffffff;
+}
+
+.result-card {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+}
+
+.result-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.result-word {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.result-meaning {
+  margin: 8px 0 0;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #14532d;
+}
+
+.other-meanings {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.other-meanings-label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.meaning-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.meaning-list li + li {
+  margin-top: 6px;
+}
+
+.result-meta {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.status {
+  min-height: 20px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.status-success {
+  color: #166534;
+}
+
+.status-error {
+  color: #b91c1c;
+}

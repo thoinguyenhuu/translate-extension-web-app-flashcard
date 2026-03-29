@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Vocabulary Lookup",
+  "version": "0.1.0",
+  "description": "Look up words with Supabase as the single source of truth.",
+  "host_permissions": [
+    "https://api-free.deepl.com/*",
+    "https://api.deepl.com/*",
+    "https://api.dictionaryapi.dev/*",
+    "https://*.supabase.co/*"
+  ],
+  "action": {
+    "default_title": "Vocabulary Lookup",
+    "default_popup": "popup.html"
+  }
+}
