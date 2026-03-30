@@ -12,8 +12,21 @@ const CONFIG = {
   maxInputLength: 50
 };
 
+const AUTO_POS_VALUE = "auto";
+const SUPPORTED_PARTS_OF_SPEECH = new Set([
+  "noun",
+  "pronoun",
+  "verb",
+  "adjective",
+  "adverb",
+  "preposition",
+  "conjunction",
+  "interjection"
+]);
+
 const elements = {
   input: document.getElementById("wordInput"),
+  posSelect: document.getElementById("posSelect"),
   translateButton: document.getElementById("translateButton"),
   resultWord: document.getElementById("resultWord"),
   resultMeaning: document.getElementById("resultMeaning"),
@@ -32,6 +45,24 @@ function cleanWord(word) {
   return String(word || "").replace(/\s+/g, " ").trim();
 }
 
+function normalizePos(pos) {
+  return cleanWord(pos).toLowerCase();
+}
+
+function validateSelectedPos(rawPos) {
+  const pos = normalizePos(rawPos || AUTO_POS_VALUE);
+
+  if (pos === AUTO_POS_VALUE) {
+    return pos;
+  }
+
+  if (!SUPPORTED_PARTS_OF_SPEECH.has(pos)) {
+    throw new Error("Selected word type is invalid.");
+  }
+
+  return pos;
+}
+
 function showStatus(message, type) {
   elements.statusMessage.textContent = message;
   elements.statusMessage.className = `status status-${type}`;
@@ -44,6 +75,7 @@ function clearStatus() {
 
 function setLoadingState(isLoading) {
   elements.translateButton.disabled = isLoading;
+  elements.posSelect.disabled = isLoading;
 }
 
 function setMeaningList(meanings) {
@@ -181,7 +213,17 @@ async function supabaseFetch(pathname, options = {}, queryParams) {
   return response.json();
 }
 
-async function fetchWordFromSupabase(word) {
+async function fetchWordFromSupabase(word, selectedPos = AUTO_POS_VALUE) {
+  const queryParams = {
+    select: "*",
+    word: `eq.${word}`,
+    limit: "1"
+  };
+
+  if (selectedPos !== AUTO_POS_VALUE) {
+    queryParams.pos = `eq.${selectedPos}`;
+  }
+
   const rows = await supabaseFetch(
     `/rest/v1/${CONFIG.supabaseTable}`,
     {
@@ -190,11 +232,7 @@ async function fetchWordFromSupabase(word) {
         Prefer: "return=representation"
       }
     },
-    {
-      select: "*",
-      word: `eq.${word}`,
-      limit: "1"
-    }
+    queryParams
   );
 
   return normalizeEntry(Array.isArray(rows) ? rows[0] : null, word);
@@ -279,9 +317,32 @@ async function fetchDictionary(word) {
   };
 }
 
-function selectMainMeaning(data) {
+function formatAvailablePartsOfSpeech(definitions) {
+  const availableParts = [...new Set(definitions.map((item) => normalizePos(item.partOfSpeech)).filter(Boolean))];
+  return availableParts.join(", ");
+}
+
+function selectMainMeaning(data, selectedPos = AUTO_POS_VALUE) {
+  const requestedPos = validateSelectedPos(selectedPos);
   const verbDefinitions = data.definitions.filter((item) => item.partOfSpeech === "verb");
-  const preferredDefinitions = verbDefinitions.length ? verbDefinitions : data.definitions;
+  const requestedDefinitions =
+    requestedPos === AUTO_POS_VALUE
+      ? []
+      : data.definitions.filter((item) => item.partOfSpeech === requestedPos);
+  const preferredDefinitions =
+    requestedPos === AUTO_POS_VALUE
+      ? (verbDefinitions.length ? verbDefinitions : data.definitions)
+      : requestedDefinitions;
+
+  if (!preferredDefinitions.length) {
+    const availableParts = formatAvailablePartsOfSpeech(data.definitions);
+    throw new Error(
+      availableParts
+        ? `No ${requestedPos} meaning found. Available types: ${availableParts}.`
+        : `No ${requestedPos} meaning found for this word.`
+    );
+  }
+
   const primary = preferredDefinitions[0];
   const meanings = [];
   const seenDefinitions = new Set();
@@ -303,8 +364,10 @@ function selectMainMeaning(data) {
     addMeaning(item.definition);
   }
 
-  for (const item of data.definitions) {
-    addMeaning(item.definition);
+  if (requestedPos === AUTO_POS_VALUE) {
+    for (const item of data.definitions) {
+      addMeaning(item.definition);
+    }
   }
 
   return {
@@ -357,8 +420,8 @@ async function translateMainMeaning(text) {
   return translatedText;
 }
 
-async function lookupWord(word) {
-  const existingEntry = await fetchWordFromSupabase(word);
+async function lookupWord(word, selectedPos) {
+  const existingEntry = await fetchWordFromSupabase(word, selectedPos);
 
   if (existingEntry) {
     return {
@@ -368,7 +431,7 @@ async function lookupWord(word) {
   }
 
   const dictionaryData = await fetchDictionary(word);
-  const selectedMeaning = selectMainMeaning(dictionaryData);
+  const selectedMeaning = selectMainMeaning(dictionaryData, selectedPos);
   const mainMeaning = await translateMainMeaning(selectedMeaning.primaryDefinition);
   const insertedEntry = await insertWordToSupabase({
     word: selectedMeaning.word,
@@ -391,7 +454,8 @@ async function handleTranslate() {
   try {
     setLoadingState(true);
     const word = validateWord(elements.input.value);
-    const { entry, source } = await lookupWord(word);
+    const selectedPos = validateSelectedPos(elements.posSelect.value);
+    const { entry, source } = await lookupWord(word, selectedPos);
     renderEntry(entry, source);
     showStatus(source === "Supabase" ? "Loaded existing word from Supabase." : "Word created in Supabase.", "success");
   } catch (error) {
@@ -415,11 +479,26 @@ function bindEvents() {
     clearStatus();
     resetResult();
   });
+
+  elements.posSelect.addEventListener("change", () => {
+    clearStatus();
+    resetResult();
+    focusInput();
+  });
+}
+
+function focusInput() {
+  window.requestAnimationFrame(() => {
+    elements.input.focus({ preventScroll: true });
+    const inputLength = elements.input.value.length;
+    elements.input.setSelectionRange(inputLength, inputLength);
+  });
 }
 
 function initPopup() {
   bindEvents();
   resetResult();
+  focusInput();
 }
 
 initPopup();
