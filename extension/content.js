@@ -13,6 +13,34 @@ let tooltipCard = null;
 let selectedText = "";
 let currentTranslation = null;
 let tooltipVisible = false;
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+// --- Cache ---
+
+function getCacheKey(text, provider) {
+  return `translation_${provider}_${text.trim().toLowerCase()}`;
+}
+
+async function getCachedTranslation(text, provider) {
+  const key = getCacheKey(text, provider);
+  return new Promise((resolve) => {
+    chrome.storage.local.get([key], (result) => {
+      const cached = result[key];
+      if (cached && cached.timestamp && Date.now() - cached.timestamp < CACHE_TTL) {
+        resolve(cached.data);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+async function setCachedTranslation(text, provider, data) {
+  const key = getCacheKey(text, provider);
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [key]: { data, timestamp: Date.now() } }, resolve);
+  });
+}
 
 // --- Init ---
 
@@ -272,6 +300,31 @@ async function callTranslateApi(word, provider, apiKey) {
   throw new Error("Unknown provider");
 }
 
+function showTranslationResult(word, result) {
+  const main = escapeHtml(result.mainMeaning || "");
+  const pos = escapeHtml(result.pos || "");
+  const meanings = Array.isArray(result.meanings) ? result.meanings.filter(m => m !== result.mainMeaning) : [];
+  const listHtml = meanings.map(m => `<li>${escapeHtml(m)}</li>`).join("");
+
+  setTooltipContent(`
+    <div class="vl-card-header">
+      <span>
+        <span class="vl-card-word">${escapeHtml(word)}</span>
+        <span class="vl-card-pos">${pos}</span>
+      </span>
+      <button class="vl-card-close" id="vlClose">×</button>
+    </div>
+    <div class="vl-card-main">${main}</div>
+    ${listHtml ? `<ul class="vl-card-list">${listHtml}</ul>` : ""}
+    <div class="vl-card-actions">
+      <button class="vl-card-save" id="vlSave">Save to vocabulary</button>
+    </div>
+  `);
+  showTooltip(floatingIcon.offsetLeft, floatingIcon.offsetTop + 44);
+  document.getElementById("vlClose")?.addEventListener("click", hideTooltip);
+  document.getElementById("vlSave")?.addEventListener("click", handleSave);
+}
+
 async function openTooltip() {
   const word = selectedText.trim().toLowerCase();
   if (!word) return;
@@ -304,31 +357,21 @@ async function openTooltip() {
   document.getElementById("vlClose")?.addEventListener("click", hideTooltip);
 
   try {
+    // Check cache first
+    const cached = await getCachedTranslation(word, provider);
+    if (cached) {
+      currentTranslation = cached;
+      showTranslationResult(word, cached);
+      return;
+    }
+
     const result = await callTranslateApi(word, provider, apiKey);
     currentTranslation = result;
 
-    const main = escapeHtml(result.mainMeaning || "");
-    const pos = escapeHtml(result.pos || "");
-    const meanings = Array.isArray(result.meanings) ? result.meanings.filter(m => m !== result.mainMeaning) : [];
-    const listHtml = meanings.map(m => `<li>${escapeHtml(m)}</li>`).join("");
+    // Cache for next time
+    setCachedTranslation(word, provider, result);
 
-    setTooltipContent(`
-      <div class="vl-card-header">
-        <span>
-          <span class="vl-card-word">${escapeHtml(word)}</span>
-          <span class="vl-card-pos">${pos}</span>
-        </span>
-        <button class="vl-card-close" id="vlClose">×</button>
-      </div>
-      <div class="vl-card-main">${main}</div>
-      ${listHtml ? `<ul class="vl-card-list">${listHtml}</ul>` : ""}
-      <div class="vl-card-actions">
-        <button class="vl-card-save" id="vlSave">Save to vocabulary</button>
-      </div>
-    `);
-    showTooltip(floatingIcon.offsetLeft, floatingIcon.offsetTop + 44);
-    document.getElementById("vlClose")?.addEventListener("click", hideTooltip);
-    document.getElementById("vlSave")?.addEventListener("click", handleSave);
+    showTranslationResult(word, result);
   } catch (error) {
     setTooltipContent(`
       <div class="vl-card-header">
