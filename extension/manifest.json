@@ -18,6 +18,12 @@
       "matches": ["https://flashcard.thoint.site/*"],
       "js": ["content-auth.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "match_about_blank": false
     }
   ],
   "action": {
