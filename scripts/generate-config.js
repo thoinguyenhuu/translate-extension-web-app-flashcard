@@ -14,17 +14,9 @@ function parseEnvFile(content) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
+    if (!trimmed || trimmed.startsWith("#")) continue;
     const separatorIndex = trimmed.indexOf("=");
-
-    if (separatorIndex === -1) {
-      continue;
-    }
-
+    if (separatorIndex === -1) continue;
     const key = trimmed.slice(0, separatorIndex).trim();
     const value = trimmed.slice(separatorIndex + 1).trim();
     values[key] = value;
@@ -34,20 +26,18 @@ function parseEnvFile(content) {
 }
 
 function escapeJsString(value) {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'");
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
 function buildConfigFile(envValues) {
-  const deeplApiKey = escapeJsString(envValues.DEEPL_API_KEY || "");
   const supabaseUrl = escapeJsString(envValues.SUPABASE_URL || "");
   const supabaseAnonKey = escapeJsString(envValues.SUPABASE_KEY || "");
 
+  // Only output Supabase config — translation API keys are user-provided
   return [
+    "// This file is auto-generated from .env",
+    "// Translation API keys are NOT included — users provide their own via options page",
     "window.APP_CONFIG = {",
-    `  deeplApiKey: '${deeplApiKey}',`,
-    "  deeplEndpoint: 'https://api-free.deepl.com/v2/translate',",
     `  supabaseUrl: '${supabaseUrl}',`,
     `  supabaseAnonKey: '${supabaseAnonKey}',`,
     "  supabaseTable: 'vocabulary'",
@@ -60,7 +50,6 @@ function main() {
   if (!fs.existsSync(envPath)) {
     throw new Error(".env file not found.");
   }
-
   if (!fs.existsSync(extensionRoot)) {
     throw new Error("extension folder not found.");
   }
