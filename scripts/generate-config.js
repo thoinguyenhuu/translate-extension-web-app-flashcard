@@ -32,6 +32,7 @@ function escapeJsString(value) {
 function buildConfigFile(envValues) {
   const supabaseUrl = escapeJsString(envValues.SUPABASE_URL || "");
   const supabaseAnonKey = escapeJsString(envValues.SUPABASE_KEY || "");
+  const webAppUrl = escapeJsString(envValues.WEB_APP_URL || "");
 
   // Only output Supabase config — translation API keys are user-provided
   return [
@@ -40,7 +41,8 @@ function buildConfigFile(envValues) {
     "window.APP_CONFIG = {",
     `  supabaseUrl: '${supabaseUrl}',`,
     `  supabaseAnonKey: '${supabaseAnonKey}',`,
-    "  supabaseTable: 'vocabulary'",
+    "  supabaseTable: 'vocabulary',",
+    `  webAppUrl: '${webAppUrl}'`,
     "};",
     ""
   ].join("\n");

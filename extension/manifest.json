@@ -4,8 +4,7 @@
   "version": "0.2.0",
   "description": "Look up words, save to your vocabulary, review with flashcards.",
   "permissions": [
-    "storage",
-    "identity"
+    "storage"
   ],
   "host_permissions": [
     "https://*.supabase.co/*",
@@ -13,6 +12,13 @@
     "https://api.deepseek.com/*",
     "https://api.openai.com/*",
     "https://api.anthropic.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://flashcard.thoint.site/*"],
+      "js": ["content-auth.js"],
+      "run_at": "document_idle"
+    }
   ],
   "action": {
     "default_title": "Vocabulary Learning",

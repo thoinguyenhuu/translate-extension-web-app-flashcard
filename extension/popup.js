@@ -6,6 +6,7 @@ const CONFIG = {
   supabaseUrl: runtimeConfig.supabaseUrl || "",
   supabaseAnonKey: runtimeConfig.supabaseAnonKey || "",
   supabaseTable: runtimeConfig.supabaseTable || "vocabulary",
+  webAppUrl: runtimeConfig.webAppUrl || "https://flashcard.thoint.site",
   maxWordLength: 50,
   maxMeaningLength: 300
 };
@@ -33,6 +34,7 @@ const elements = {
 
 let currentEntry = null;
 let currentSession = null;
+let sessionPollInterval = null;
 
 // --- Session management ---
 
@@ -48,8 +50,7 @@ async function checkAuth() {
   const session = await getStoredSession();
 
   if (!session || !session.accessToken) {
-    elements.authGate.style.display = "flex";
-    elements.popupContent.classList.remove("is-authenticated");
+    showAuthGate();
     return false;
   }
 
@@ -57,15 +58,13 @@ async function checkAuth() {
   if (session.expiresAt && Date.now() > session.expiresAt) {
     const refreshed = await refreshSession(session.refreshToken);
     if (!refreshed) {
-      elements.authGate.style.display = "flex";
-      elements.popupContent.classList.remove("is-authenticated");
+      showAuthGate();
       return false;
     }
   }
 
   currentSession = session;
-  elements.authGate.style.display = "none";
-  elements.popupContent.classList.add("is-authenticated");
+  hideAuthGate();
   return true;
 }
 
@@ -100,15 +99,41 @@ async function refreshSession(refreshToken) {
   }
 }
 
+function showAuthGate() {
+  elements.authGate.style.display = "flex";
+  elements.popupContent.classList.remove("is-authenticated");
+}
+
+function hideAuthGate() {
+  elements.authGate.style.display = "none";
+  elements.popupContent.classList.add("is-authenticated");
+}
+
 // --- Auth actions ---
 
 function handleLogin() {
-  chrome.windows.create({
-    url: "auth.html",
-    type: "popup",
-    width: 480,
-    height: 600
-  });
+  // Open web app for user to log in
+  chrome.tabs.create({ url: CONFIG.webAppUrl });
+
+  // Start polling for session detection
+  startSessionPolling();
+}
+
+function startSessionPolling() {
+  if (sessionPollInterval) return;
+
+  sessionPollInterval = setInterval(async () => {
+    const session = await getStoredSession();
+    if (session?.accessToken) {
+      clearInterval(sessionPollInterval);
+      sessionPollInterval = null;
+      // Session detected! Re-initialize the popup
+      currentSession = session;
+      hideAuthGate();
+      resetResult();
+      focusInput();
+    }
+  }, 1500);
 }
 
 function handleSettings() {
