@@ -197,12 +197,23 @@ async function getApiSettings() {
 
 function getSession() {
   return new Promise((resolve) => {
+    // Try session storage first (faster), fallback to local storage
     try {
       chrome.storage.session.get(["supabaseSession"], (result) => {
-        resolve(result?.supabaseSession || null);
+        if (result?.supabaseSession) {
+          resolve(result.supabaseSession);
+        } else {
+          // Fallback to local storage (more reliable for content scripts)
+          chrome.storage.local.get(["supabaseSession"], (localResult) => {
+            resolve(localResult?.supabaseSession || null);
+          });
+        }
       });
     } catch {
-      resolve(null);
+      // Final fallback
+      chrome.storage.local.get(["supabaseSession"], (localResult) => {
+        resolve(localResult?.supabaseSession || null);
+      });
     }
   });
 }

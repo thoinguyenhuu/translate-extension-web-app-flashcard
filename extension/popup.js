@@ -37,7 +37,13 @@ let sessionPollInterval = null;
 function getStoredSession() {
   return new Promise((resolve) => {
     chrome.storage.session.get(["supabaseSession"], (result) => {
-      resolve(result.supabaseSession || null);
+      if (result?.supabaseSession) {
+        resolve(result.supabaseSession);
+      } else {
+        chrome.storage.local.get(["supabaseSession"], (localResult) => {
+          resolve(localResult?.supabaseSession || null);
+        });
+      }
     });
   });
 }
@@ -90,9 +96,9 @@ async function refreshSession(refreshToken) {
     currentSession = session;
 
     return new Promise((resolve) => {
-      chrome.storage.session.set({ supabaseSession: session }, () =>
-        resolve(true),
-      );
+      chrome.storage.session.set({ supabaseSession: session }, () => {
+        chrome.storage.local.set({ supabaseSession: session }, () => resolve(true));
+      });
     });
   } catch {
     return false;

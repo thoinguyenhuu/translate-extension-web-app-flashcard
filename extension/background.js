@@ -11,15 +11,20 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 // Handle auth session from content-auth.js (runs on web app domain)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "AUTH_SUCCESS") {
+    // Store in session (popup) AND local (content scripts)
     chrome.storage.session.set({ supabaseSession: message.session }, () => {
-      sendResponse({ ok: true });
+      chrome.storage.local.set({ supabaseSession: message.session }, () => {
+        sendResponse({ ok: true });
+      });
     });
     return true;
   }
 
   if (message.type === "AUTH_LOGOUT") {
     chrome.storage.session.remove("supabaseSession", () => {
-      sendResponse({ ok: true });
+      chrome.storage.local.remove("supabaseSession", () => {
+        sendResponse({ ok: true });
+      });
     });
     return true;
   }
