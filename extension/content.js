@@ -160,7 +160,7 @@ function handleMouseUp(e) {
     const selection = window.getSelection();
     const text = selection.toString().trim();
 
-    if (text && text.length >= 1 && text.length <= 100 && /^[a-zA-Z\s-]+$/.test(text)) {
+    if (text && text.length >= 1 && text.length <= 200 && /^[a-zA-Z\s.,'?!-]+$/.test(text)) {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       selectedText = text;
