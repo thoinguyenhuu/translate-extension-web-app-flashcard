@@ -3,12 +3,19 @@
 -- ============================================================
 
 -- 1. VOCABULARY (extend with user_id + spaced repetition fields)
+-- Add column as nullable first (existing rows have no user_id)
 alter table if exists public.vocabulary
-  add column if not exists user_id uuid references auth.users not null default auth.uid(),
+  add column if not exists user_id uuid references auth.users default auth.uid(),
   add column if not exists source text,
   add column if not exists ease_factor float not null default 2.5,
   add column if not exists review_interval_days int not null default 1,
   add column if not exists next_review_date timestamptz not null default timezone('utc', now());
+
+-- Delete rows that still have null user_id (pre-migration data, owner unknown)
+delete from public.vocabulary where user_id is null;
+
+-- Now safe to set NOT NULL
+alter table public.vocabulary alter column user_id set not null;
 
 -- Drop old unique constraint on word, add composite unique (user_id, word)
 alter table public.vocabulary drop constraint if exists vocabulary_word_key;
