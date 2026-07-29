@@ -2,6 +2,11 @@
 -- Vocabulary Learning System — Full Schema
 -- ============================================================
 
+-- Clear existing data (schema migration for auth)
+delete from public.study_log;
+delete from public.user_stats;
+delete from public.vocabulary;
+
 -- 1. VOCABULARY (extend with user_id + spaced repetition fields)
 -- Add column as nullable first (existing rows have no user_id)
 alter table if exists public.vocabulary
