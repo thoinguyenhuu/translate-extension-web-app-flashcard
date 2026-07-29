@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — Vocabulary Learning</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { width: 480px; padding: 24px; }
+    .opt-title { margin: 0 0 20px; font-size: 20px; }
+    .opt-group { margin-bottom: 20px; }
+    .opt-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+    .opt-select, .opt-input { box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 14px; background: #fff; }
+    .opt-select:focus, .opt-input:focus { outline: 2px solid #9dc0ff; border-color: #6ea8fe; }
+    .opt-help { margin: 6px 0 0; font-size: 12px; color: #64748b; line-height: 1.4; }
+    .opt-help a { color: #2563eb; }
+    .opt-save-btn { padding: 10px 20px; border: none; border-radius: 10px; background: #0f62fe; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .opt-save-btn:hover { opacity: 0.9; }
+    .opt-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .opt-status { margin-top: 12px; font-size: 13px; min-height: 20px; }
+    .opt-status-success { color: #166534; }
+    .opt-status-error { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1 class="opt-title">Settings</h1>
+
+  <section class="opt-group">
+    <label class="opt-label" for="providerSelect">Translation Provider</label>
+    <select id="providerSelect" class="opt-select">
+      <option value="gemini">Google Gemini</option>
+      <option value="deepseek">DeepSeek</option>
+      <option value="openai">OpenAI</option>
+      <option value="claude">Anthropic Claude</option>
+    </select>
+    <p class="opt-help">
+      Your API key is stored in your browser and never sent to any server besides your chosen provider.
+    </p>
+  </section>
+
+  <section class="opt-group">
+    <label class="opt-label" for="apiKeyInput">API Key</label>
+    <input id="apiKeyInput" class="opt-input" type="password" placeholder="Enter your API key" autocomplete="off" />
+    <p class="opt-help" id="providerHelp">
+      <span>Get a key: </span>
+      <a id="providerLink" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>
+    </p>
+  </section>
+
+  <button id="saveBtn" class="opt-save-btn" type="button">Save</button>
+  <p id="statusMsg" class="opt-status"></p>
+
+  <script src="options.js"></script>
+</body>
+</html>

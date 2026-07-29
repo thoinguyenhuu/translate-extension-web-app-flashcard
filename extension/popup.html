@@ -1,24 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vocabulary Writer</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main class="popup">
-      <h1 class="title">Vocabulary Writer</h1>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vocabulary Learning</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Auth gate overlay */
+    .auth-gate {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 280px; text-align: center; padding: 24px;
+    }
+    .auth-gate-title { margin: 0 0 8px; font-size: 20px; }
+    .auth-gate-sub { color: #5b6473; font-size: 13px; margin: 0 0 20px; }
+    .auth-gate-btn {
+      padding: 10px 20px; border: none; border-radius: 10px;
+      background: #0f62fe; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .auth-gate-btn:hover { opacity: 0.9; }
+
+    /* Header bar */
+    .popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .settings-btn {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      color: #64748b; font-size: 18px; line-height: 1;
+    }
+    .settings-btn:hover { color: #1f2937; }
+
+    .popup-content { display: none; }
+    .popup-content.is-authenticated { display: block; }
+  </style>
+</head>
+<body>
+  <main class="popup">
+    <!-- Auth gate (shown when not logged in) -->
+    <section id="authGate" class="auth-gate">
+      <h2 class="auth-gate-title">Vocabulary Learning</h2>
+      <p class="auth-gate-sub">Sign in to save and review vocabulary</p>
+      <button id="loginBtn" class="auth-gate-btn" type="button">Sign in with Google</button>
+    </section>
+
+    <!-- Main content (shown when logged in) -->
+    <div id="popupContent" class="popup-content">
+      <div class="popup-header">
+        <h1 class="title" style="margin:0;">Vocabulary Writer</h1>
+        <button id="settingsBtn" class="settings-btn" type="button" title="Settings">&#9881;</button>
+      </div>
       <p class="subtitle">Add a word manually and save it straight to Supabase.</p>
 
       <label class="field-label" for="wordInput">English word</label>
-      <input
-        id="wordInput"
-        class="text-input"
-        type="text"
-        placeholder="Enter a word"
-        autocomplete="off"
-      />
+      <input id="wordInput" class="text-input" type="text" placeholder="Enter a word" autocomplete="off" />
 
       <label class="field-label field-label-spaced" for="posSelect">Word type</label>
       <select id="posSelect" class="text-input select-input">
@@ -34,17 +65,10 @@
       </select>
 
       <label class="field-label field-label-spaced" for="meaningInput">Definition</label>
-      <textarea
-        id="meaningInput"
-        class="text-input text-area-input"
-        rows="4"
-        placeholder="Enter the meaning or definition"
-      ></textarea>
+      <textarea id="meaningInput" class="text-input text-area-input" rows="4" placeholder="Enter the meaning or definition"></textarea>
 
       <div class="actions">
-        <button id="saveButton" class="button button-primary" type="button">
-          Save to Supabase
-        </button>
+        <button id="saveButton" class="button button-primary" type="button">Save to Supabase</button>
       </div>
 
       <section class="result-card">
@@ -61,9 +85,10 @@
       </section>
 
       <p id="statusMessage" class="status" aria-live="polite"></p>
-    </main>
+    </div>
+  </main>
 
-    <script src="config.js"></script>
-    <script src="popup.js"></script>
-  </body>
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
 </html>
