@@ -230,7 +230,7 @@ function buildTranslatePrompt(text) {
 }`;
   }
 
-  return `You are a English-Vietnamese translator. Translate the following English text to Vietnamese. Return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
+  return `You are a English-Vietnamese translator. Translate this English text to Vietnamese: "${text}". Return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
 {
   "pos": "phrase",
   "mainMeaning": "the complete Vietnamese translation of the text",
