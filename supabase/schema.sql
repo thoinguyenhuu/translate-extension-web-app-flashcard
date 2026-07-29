@@ -3,8 +3,8 @@
 -- ============================================================
 
 -- Clear existing data (schema migration for auth)
-delete from public.study_log;
-delete from public.user_stats;
+drop table if exists public.study_log;
+drop table if exists public.user_stats;
 delete from public.vocabulary;
 
 -- 1. VOCABULARY (extend with user_id + spaced repetition fields)
