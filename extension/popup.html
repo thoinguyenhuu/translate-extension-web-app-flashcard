@@ -6,7 +6,6 @@
   <title>Vocabulary Learning</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    /* Auth gate overlay */
     .auth-gate {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 280px; text-align: center; padding: 24px;
@@ -20,7 +19,6 @@
     }
     .auth-gate-btn:hover { opacity: 0.9; }
 
-    /* Header bar */
     .popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .settings-btn {
       background: none; border: none; cursor: pointer; padding: 4px;
@@ -34,7 +32,7 @@
 </head>
 <body>
   <main class="popup">
-    <!-- Auth gate (shown when not logged in) -->
+    <!-- Auth gate -->
     <section id="authGate" class="auth-gate">
       <h2 class="auth-gate-title">Vocabulary Learning</h2>
       <p class="auth-gate-sub">Sign in to save and review vocabulary</p>
@@ -42,55 +40,49 @@
       <button id="loginBtn" class="auth-gate-btn" type="button">Open Web App to Login</button>
     </section>
 
-    <!-- Main content (shown when logged in) -->
+    <!-- Main content -->
     <div id="popupContent" class="popup-content">
       <div class="popup-header">
-        <h1 class="title" style="margin:0;">Vocabulary Writer</h1>
+        <h1 class="title" style="margin:0;">Vocabulary</h1>
         <button id="settingsBtn" class="settings-btn" type="button" title="Settings">&#9881;</button>
       </div>
-      <p class="subtitle">Add a word manually and save it straight to Supabase.</p>
 
-      <label class="field-label" for="wordInput">English word</label>
+      <!-- Word input -->
       <div class="word-input-row">
         <input id="wordInput" class="text-input word-input" type="text" placeholder="Enter a word" autocomplete="off" />
         <button id="translateButton" class="button button-secondary" type="button">Translate</button>
       </div>
 
-      <!-- Translation result preview (auto-filled from API) -->
-      <section id="translateResult" class="translate-result" style="display:none">
-        <p class="result-label">Translation</p>
-        <p id="translatedWord" class="result-word"></p>
-        <p id="translatedPos" class="translated-pos"></p>
-        <p id="translatedMeaning" class="result-meaning"></p>
-        <ul id="translatedMeanings" class="meaning-list"></ul>
+      <!-- Result card (shown after translate) -->
+      <section id="resultCard" class="result-card-main" style="display:none">
+        <div class="card-word-row">
+          <span id="cardWord" class="card-word-big"></span>
+          <span id="cardPos" class="pos-badge"></span>
+        </div>
+
+        <div class="meaning-group">
+          <label class="meaning-label">Main meaning</label>
+          <input id="mainMeaningInput" class="text-input" type="text" placeholder="Main meaning" />
+        </div>
+
+        <div class="meaning-group">
+          <label class="meaning-label">Other meanings</label>
+          <ul id="meaningsList" class="meanings-editable"></ul>
+          <button id="addMeaningBtn" class="add-meaning-btn" type="button">+ Add meaning</button>
+        </div>
+
+        <button id="saveButton" class="button button-primary save-btn-main" type="button">
+          Save to vocabulary
+        </button>
       </section>
 
-      <label class="field-label field-label-spaced" for="posSelect">Word type</label>
-      <select id="posSelect" class="text-input select-input">
-        <option value="">Select word type</option>
-        <option value="noun">Noun</option>
-        <option value="pronoun">Pronoun</option>
-        <option value="verb">Verb</option>
-        <option value="adjective">Adjective</option>
-        <option value="adverb">Adverb</option>
-        <option value="preposition">Preposition</option>
-        <option value="conjunction">Conjunction</option>
-        <option value="interjection">Interjection</option>
-      </select>
-
-      <label class="field-label field-label-spaced" for="meaningInput">Definition</label>
-      <textarea id="meaningInput" class="text-input text-area-input" rows="4" placeholder="Enter the meaning or definition"></textarea>
-
-      <div class="actions">
-        <button id="saveButton" class="button button-primary" type="button">Save</button>
-      </div>
-
-      <section class="result-card">
+      <!-- Last saved -->
+      <section class="result-card" id="lastSavedSection">
         <p class="result-label">Last saved</p>
         <p id="resultWord" class="result-word">No word saved yet</p>
-        <p id="resultMeaning" class="result-meaning">Fill the form above and save it to Supabase.</p>
+        <p id="resultMeaning" class="result-meaning">Use Translate then Save to build your vocabulary.</p>
         <div class="other-meanings">
-          <p class="other-meanings-label">Stored definition</p>
+          <p class="other-meanings-label">Other meanings</p>
           <ul id="resultMeaningList" class="meaning-list">
             <li>No saved definition yet.</li>
           </ul>

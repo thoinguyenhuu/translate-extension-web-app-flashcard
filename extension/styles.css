@@ -171,6 +171,150 @@ body {
 .word-input-row {
   display: flex;
   gap: 8px;
+  margin-bottom: 16px;
+}
+
+.word-input {
+  flex: 1;
+}
+
+.button-secondary {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #e8edf5;
+  color: #1f2937;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #dce3ef;
+}
+
+.button-secondary:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+/* Result card (main) */
+.result-card-main {
+  padding: 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+  margin-bottom: 16px;
+}
+
+.card-word-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.card-word-big {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.pos-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.meaning-group {
+  margin-bottom: 14px;
+}
+
+.meaning-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.meanings-editable {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.meanings-editable li {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.meanings-editable .text-input {
+  flex: 1;
+}
+
+.remove-meaning-btn {
+  flex: 0 0 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-meaning-btn:hover {
+  background: #fee2e2;
+}
+
+.add-meaning-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.add-meaning-btn:hover {
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+.save-btn-main {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* Override field-label-spaced top margin in new layout */
+.field-label-spaced {
+  margin-top: 10px;
+}
+
+/* Word input with translate button */
+.word-input-row {
+  display: flex;
+  gap: 8px;
 }
 
 .word-input {
