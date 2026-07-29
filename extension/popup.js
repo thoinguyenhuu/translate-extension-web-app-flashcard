@@ -3,16 +3,13 @@
 const runtimeConfig = window.APP_CONFIG || {};
 
 const CONFIG = {
-  deeplApiKey: runtimeConfig.deeplApiKey || "",
-  deeplEndpoint: runtimeConfig.deeplEndpoint || "https://api-free.deepl.com/v2/translate",
   supabaseUrl: runtimeConfig.supabaseUrl || "",
   supabaseAnonKey: runtimeConfig.supabaseAnonKey || "",
   supabaseTable: runtimeConfig.supabaseTable || "vocabulary",
-  dictionaryEndpoint: "https://api.dictionaryapi.dev/api/v2/entries/en",
-  maxInputLength: 50
+  maxWordLength: 50,
+  maxMeaningLength: 300
 };
 
-const AUTO_POS_VALUE = "auto";
 const SUPPORTED_PARTS_OF_SPEECH = new Set([
   "noun",
   "pronoun",
@@ -26,8 +23,9 @@ const SUPPORTED_PARTS_OF_SPEECH = new Set([
 
 const elements = {
   input: document.getElementById("wordInput"),
+  meaningInput: document.getElementById("meaningInput"),
   posSelect: document.getElementById("posSelect"),
-  translateButton: document.getElementById("translateButton"),
+  saveButton: document.getElementById("saveButton"),
   resultWord: document.getElementById("resultWord"),
   resultMeaning: document.getElementById("resultMeaning"),
   resultMeaningList: document.getElementById("resultMeaningList"),
@@ -50,14 +48,10 @@ function normalizePos(pos) {
 }
 
 function validateSelectedPos(rawPos) {
-  const pos = normalizePos(rawPos || AUTO_POS_VALUE);
-
-  if (pos === AUTO_POS_VALUE) {
-    return pos;
-  }
+  const pos = normalizePos(rawPos);
 
   if (!SUPPORTED_PARTS_OF_SPEECH.has(pos)) {
-    throw new Error("Selected word type is invalid.");
+    throw new Error("Select a valid word type before saving.");
   }
 
   return pos;
@@ -74,8 +68,10 @@ function clearStatus() {
 }
 
 function setLoadingState(isLoading) {
-  elements.translateButton.disabled = isLoading;
+  elements.input.disabled = isLoading;
+  elements.saveButton.disabled = isLoading;
   elements.posSelect.disabled = isLoading;
+  elements.meaningInput.disabled = isLoading;
 }
 
 function setMeaningList(meanings) {
@@ -84,7 +80,7 @@ function setMeaningList(meanings) {
 
   if (!items.length) {
     const emptyItem = document.createElement("li");
-    emptyItem.textContent = "No additional meanings.";
+    emptyItem.textContent = "No saved definition yet.";
     elements.resultMeaningList.appendChild(emptyItem);
     return;
   }
@@ -141,8 +137,8 @@ function renderEntry(entry, source) {
 
 function resetResult() {
   currentEntry = null;
-  elements.resultWord.textContent = "No word selected";
-  elements.resultMeaning.textContent = "Look up a word to see the translated main meaning.";
+  elements.resultWord.textContent = "No word saved yet";
+  elements.resultMeaning.textContent = "Fill the form above and save it to Supabase.";
   elements.resultMeta.textContent = "";
   setMeaningList([]);
 }
@@ -151,14 +147,28 @@ function validateWord(rawWord) {
   const word = cleanWord(rawWord);
 
   if (!word) {
-    throw new Error("Enter an English word before looking it up.");
+    throw new Error("Enter a word before saving.");
   }
 
-  if (word.length > CONFIG.maxInputLength) {
-    throw new Error(`Keep the input under ${CONFIG.maxInputLength} characters.`);
+  if (word.length > CONFIG.maxWordLength) {
+    throw new Error(`Keep the word under ${CONFIG.maxWordLength} characters.`);
   }
 
   return normalizeWord(word);
+}
+
+function validateMeaning(rawMeaning) {
+  const meaning = cleanWord(rawMeaning);
+
+  if (!meaning) {
+    throw new Error("Enter a definition before saving.");
+  }
+
+  if (meaning.length > CONFIG.maxMeaningLength) {
+    throw new Error(`Keep the definition under ${CONFIG.maxMeaningLength} characters.`);
+  }
+
+  return meaning;
 }
 
 function buildSupabaseUrl(pathname, queryParams) {
@@ -213,32 +223,7 @@ async function supabaseFetch(pathname, options = {}, queryParams) {
   return response.json();
 }
 
-async function fetchWordFromSupabase(word, selectedPos = AUTO_POS_VALUE) {
-  const queryParams = {
-    select: "*",
-    word: `eq.${word}`,
-    limit: "1"
-  };
-
-  if (selectedPos !== AUTO_POS_VALUE) {
-    queryParams.pos = `eq.${selectedPos}`;
-  }
-
-  const rows = await supabaseFetch(
-    `/rest/v1/${CONFIG.supabaseTable}`,
-    {
-      method: "GET",
-      headers: {
-        Prefer: "return=representation"
-      }
-    },
-    queryParams
-  );
-
-  return normalizeEntry(Array.isArray(rows) ? rows[0] : null, word);
-}
-
-async function insertWordToSupabase(entry) {
+async function saveWordToSupabase(entry) {
   const payload = {
     word: entry.word,
     pos: entry.pos,
@@ -265,224 +250,63 @@ async function insertWordToSupabase(entry) {
   return normalizeEntry(Array.isArray(rows) ? rows[0] : payload, entry.word);
 }
 
-async function fetchDictionary(word) {
-  const response = await fetch(`${CONFIG.dictionaryEndpoint}/${encodeURIComponent(word)}`);
-
-  let payload = null;
-
-  try {
-    payload = await response.json();
-  } catch (error) {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const message = payload?.message || payload?.title || `Dictionary request failed with status ${response.status}.`;
-    throw new Error(message);
-  }
-
-  const entries = Array.isArray(payload) ? payload : [];
-  const definitions = [];
-  const seenDefinitions = new Set();
-  const dictionaryWord = cleanWord(entries[0]?.word || word);
-
-  for (const entry of entries) {
-    for (const meaning of entry.meanings || []) {
-      const pos = cleanWord(meaning.partOfSpeech || "unknown").toLowerCase();
-
-      for (const definitionItem of meaning.definitions || []) {
-        const definition = cleanWord(definitionItem.definition || "");
-        const definitionKey = normalizeWord(definition);
-
-        if (!definition || seenDefinitions.has(definitionKey)) {
-          continue;
-        }
-
-        seenDefinitions.add(definitionKey);
-        definitions.push({
-          partOfSpeech: pos || "unknown",
-          definition
-        });
-      }
-    }
-  }
-
-  if (!definitions.length) {
-    throw new Error("Dictionary API returned no usable meanings.");
-  }
-
-  return {
-    word: dictionaryWord,
-    definitions
-  };
+function clearForm() {
+  elements.input.value = "";
+  elements.posSelect.value = "";
+  elements.meaningInput.value = "";
 }
 
-function formatAvailablePartsOfSpeech(definitions) {
-  const availableParts = [...new Set(definitions.map((item) => normalizePos(item.partOfSpeech)).filter(Boolean))];
-  return availableParts.join(", ");
-}
-
-function selectMainMeaning(data, selectedPos = AUTO_POS_VALUE) {
-  const requestedPos = validateSelectedPos(selectedPos);
-  const verbDefinitions = data.definitions.filter((item) => item.partOfSpeech === "verb");
-  const requestedDefinitions =
-    requestedPos === AUTO_POS_VALUE
-      ? []
-      : data.definitions.filter((item) => item.partOfSpeech === requestedPos);
-  const preferredDefinitions =
-    requestedPos === AUTO_POS_VALUE
-      ? (verbDefinitions.length ? verbDefinitions : data.definitions)
-      : requestedDefinitions;
-
-  if (!preferredDefinitions.length) {
-    const availableParts = formatAvailablePartsOfSpeech(data.definitions);
-    throw new Error(
-      availableParts
-        ? `No ${requestedPos} meaning found. Available types: ${availableParts}.`
-        : `No ${requestedPos} meaning found for this word.`
-    );
-  }
-
-  const primary = preferredDefinitions[0];
-  const meanings = [];
-  const seenDefinitions = new Set();
-
-  const addMeaning = (definition) => {
-    const key = normalizeWord(definition);
-
-    if (!definition || seenDefinitions.has(key) || meanings.length >= 3) {
-      return;
-    }
-
-    seenDefinitions.add(key);
-    meanings.push(definition);
-  };
-
-  addMeaning(primary.definition);
-
-  for (const item of preferredDefinitions) {
-    addMeaning(item.definition);
-  }
-
-  if (requestedPos === AUTO_POS_VALUE) {
-    for (const item of data.definitions) {
-      addMeaning(item.definition);
-    }
-  }
-
-  return {
-    word: data.word,
-    pos: primary.partOfSpeech,
-    primaryDefinition: primary.definition,
-    meanings
-  };
-}
-
-async function translateMainMeaning(text) {
-  if (!CONFIG.deeplApiKey) {
-    throw new Error("DeepL API key is missing. Generate extension/config.js from .env first.");
-  }
-
-  const body = new URLSearchParams({
-    text,
-    source_lang: "EN",
-    target_lang: "VI"
-  });
-
-  const response = await fetch(CONFIG.deeplEndpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `DeepL-Auth-Key ${CONFIG.deeplApiKey}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: body.toString()
-  });
-
-  let payload = null;
-
-  try {
-    payload = await response.json();
-  } catch (error) {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const message = payload?.message || `DeepL request failed with status ${response.status}.`;
-    throw new Error(message);
-  }
-
-  const translatedText = payload?.translations?.[0]?.text;
-
-  if (!translatedText) {
-    throw new Error("DeepL returned an empty translation.");
-  }
-
-  return translatedText;
-}
-
-async function lookupWord(word, selectedPos) {
-  const existingEntry = await fetchWordFromSupabase(word, selectedPos);
-
-  if (existingEntry) {
-    return {
-      entry: existingEntry,
-      source: "Supabase"
-    };
-  }
-
-  const dictionaryData = await fetchDictionary(word);
-  const selectedMeaning = selectMainMeaning(dictionaryData, selectedPos);
-  const mainMeaning = await translateMainMeaning(selectedMeaning.primaryDefinition);
-  const insertedEntry = await insertWordToSupabase({
-    word: selectedMeaning.word,
-    pos: selectedMeaning.pos,
-    mainMeaning,
-    meanings: selectedMeaning.meanings,
-    createdAt: new Date().toISOString()
-  });
-
-  return {
-    entry: insertedEntry,
-    source: "Dictionary API + DeepL + Supabase"
-  };
-}
-
-async function handleTranslate() {
+async function handleSave() {
   clearStatus();
-  resetResult();
 
   try {
     setLoadingState(true);
     const word = validateWord(elements.input.value);
     const selectedPos = validateSelectedPos(elements.posSelect.value);
-    const { entry, source } = await lookupWord(word, selectedPos);
-    renderEntry(entry, source);
-    showStatus(source === "Supabase" ? "Loaded existing word from Supabase." : "Word created in Supabase.", "success");
+    const mainMeaning = validateMeaning(elements.meaningInput.value);
+    const entry = await saveWordToSupabase({
+      word,
+      pos: selectedPos,
+      mainMeaning,
+      meanings: [mainMeaning],
+      createdAt: new Date().toISOString()
+    });
+
+    renderEntry(entry, "Supabase");
+    showStatus("Saved to Supabase.", "success");
+    clearForm();
+    focusInput();
   } catch (error) {
-    resetResult();
-    showStatus(error.message || "Lookup failed.", "error");
+    showStatus(error.message || "Save failed.", "error");
   } finally {
     setLoadingState(false);
   }
 }
 
 function bindEvents() {
-  elements.translateButton.addEventListener("click", handleTranslate);
+  elements.saveButton.addEventListener("click", handleSave);
 
   elements.input.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
-      handleTranslate();
+      handleSave();
     }
   });
 
-  elements.input.addEventListener("input", () => {
-    clearStatus();
-    resetResult();
+  elements.meaningInput.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      handleSave();
+    }
   });
 
-  elements.posSelect.addEventListener("change", () => {
+  const clearFeedback = () => {
     clearStatus();
-    resetResult();
+  };
+
+  elements.input.addEventListener("input", clearFeedback);
+  elements.meaningInput.addEventListener("input", clearFeedback);
+
+  elements.posSelect.addEventListener("change", () => {
+    clearFeedback();
     focusInput();
   });
 }

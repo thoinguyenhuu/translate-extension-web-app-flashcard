@@ -58,6 +58,12 @@ body {
   cursor: pointer;
 }
 
+.text-area-input {
+  min-height: 92px;
+  resize: vertical;
+  font-family: inherit;
+}
+
 .actions {
   display: flex;
   gap: 10px;

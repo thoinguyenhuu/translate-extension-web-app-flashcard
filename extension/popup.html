@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vocabulary Lookup</title>
+    <title>Vocabulary Writer</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="popup">
-      <h1 class="title">Vocabulary Translator</h1>
-      <p class="subtitle">Translate words with Supabase as the shared data source.</p>
+      <h1 class="title">Vocabulary Writer</h1>
+      <p class="subtitle">Add a word manually and save it straight to Supabase.</p>
 
       <label class="field-label" for="wordInput">English word</label>
       <input
@@ -22,7 +22,7 @@
 
       <label class="field-label field-label-spaced" for="posSelect">Word type</label>
       <select id="posSelect" class="text-input select-input">
-        <option value="auto">Auto</option>
+        <option value="">Select word type</option>
         <option value="noun">Noun</option>
         <option value="pronoun">Pronoun</option>
         <option value="verb">Verb</option>
@@ -33,20 +33,28 @@
         <option value="interjection">Interjection</option>
       </select>
 
+      <label class="field-label field-label-spaced" for="meaningInput">Definition</label>
+      <textarea
+        id="meaningInput"
+        class="text-input text-area-input"
+        rows="4"
+        placeholder="Enter the meaning or definition"
+      ></textarea>
+
       <div class="actions">
-        <button id="translateButton" class="button button-primary" type="button">
-          Translate
+        <button id="saveButton" class="button button-primary" type="button">
+          Save to Supabase
         </button>
       </div>
 
       <section class="result-card">
-        <p class="result-label">Result</p>
-        <p id="resultWord" class="result-word">No word selected</p>
-        <p id="resultMeaning" class="result-meaning">Look up a word to see the translated main meaning.</p>
+        <p class="result-label">Last saved</p>
+        <p id="resultWord" class="result-word">No word saved yet</p>
+        <p id="resultMeaning" class="result-meaning">Fill the form above and save it to Supabase.</p>
         <div class="other-meanings">
-          <p class="other-meanings-label">Other meanings</p>
+          <p class="other-meanings-label">Stored definition</p>
           <ul id="resultMeaningList" class="meaning-list">
-            <li>No additional meanings.</li>
+            <li>No saved definition yet.</li>
           </ul>
         </div>
         <p id="resultMeta" class="result-meta"></p>
