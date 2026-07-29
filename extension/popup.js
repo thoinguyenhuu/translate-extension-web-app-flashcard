@@ -25,10 +25,6 @@ const elements = {
   meaningsList: document.getElementById("meaningsList"),
   addMeaningBtn: document.getElementById("addMeaningBtn"),
   saveButton: document.getElementById("saveButton"),
-  resultWord: document.getElementById("resultWord"),
-  resultMeaning: document.getElementById("resultMeaning"),
-  resultMeaningList: document.getElementById("resultMeaningList"),
-  resultMeta: document.getElementById("resultMeta"),
   statusMessage: document.getElementById("statusMessage")
 };
 
@@ -125,7 +121,6 @@ function startSessionPolling() {
       sessionPollInterval = null;
       currentSession = session;
       hideAuthGate();
-      resetLastSaved();
       elements.input.focus();
     }
   }, 1500);
@@ -458,17 +453,6 @@ async function handleSave() {
 
     await saveWordToSupabase(entry);
 
-    // Update "Last saved" section
-    elements.resultWord.textContent = `${word} (${pos})`;
-    elements.resultMeaning.textContent = mainMeaning;
-    elements.resultMeta.textContent = "Saved to Supabase";
-    elements.resultMeaningList.textContent = "";
-    for (const m of allMeanings.slice(1)) {
-      const li = document.createElement("li");
-      li.textContent = m;
-      elements.resultMeaningList.appendChild(li);
-    }
-
     showStatus("Saved!", "success");
     elements.input.value = "";
     hideResultCard();
@@ -478,16 +462,6 @@ async function handleSave() {
   } finally {
     setLoadingState(false);
   }
-}
-
-function resetLastSaved() {
-  elements.resultWord.textContent = "No word saved yet";
-  elements.resultMeaning.textContent = "Use Translate then Save to build your vocabulary.";
-  elements.resultMeta.textContent = "";
-  elements.resultMeaningList.textContent = "";
-  const emptyItem = document.createElement("li");
-  emptyItem.textContent = "No saved definition yet.";
-  elements.resultMeaningList.appendChild(emptyItem);
 }
 
 function bindEvents() {
@@ -517,7 +491,6 @@ async function initPopup() {
   bindEvents();
   const isAuthed = await checkAuth();
   if (isAuthed) {
-    resetLastSaved();
     elements.input.focus();
   }
 }
