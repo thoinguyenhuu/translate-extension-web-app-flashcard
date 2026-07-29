@@ -5,8 +5,6 @@
 // Runs on all pages. Shows floating tooltip for text selection.
 // ============================================================
 
-console.log("[Vocabulary] content.js loaded");
-
 const SUPABASE_URL = "https://asuxigdpuracsosyuxiy.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzdXhpZ2RwdXJhY3Nvc3l1eGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjgwODksImV4cCI6MjA5MDM0NDA4OX0.XiBjubFxUkZ2TVvNcT9wKIsBJKAzlp30QkEWKdc0djM";
 
@@ -19,7 +17,6 @@ let tooltipVisible = false;
 // --- Init ---
 
 function init() {
-  console.log("[Vocabulary] init() called");
   injectStyles();
   createFloatingIcon();
   createTooltipCard();
@@ -164,7 +161,6 @@ function handleMouseUp(e) {
     const text = selection.toString().trim();
 
     if (text && text.length >= 1 && text.length <= 100 && /^[a-zA-Z\s-]+$/.test(text)) {
-      console.log("[Vocabulary] Text selected:", text);
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       selectedText = text;
