@@ -13,34 +13,6 @@ let tooltipCard = null;
 let selectedText = "";
 let currentTranslation = null;
 let tooltipVisible = false;
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
-// --- Cache ---
-
-function getCacheKey(text, provider) {
-  return `translation_${provider}_${text.trim().toLowerCase()}`;
-}
-
-async function getCachedTranslation(text, provider) {
-  const key = getCacheKey(text, provider);
-  return new Promise((resolve) => {
-    chrome.storage.local.get([key], (result) => {
-      const cached = result[key];
-      if (cached && cached.timestamp && Date.now() - cached.timestamp < CACHE_TTL) {
-        resolve(cached.data);
-      } else {
-        resolve(null);
-      }
-    });
-  });
-}
-
-async function setCachedTranslation(text, provider, data) {
-  const key = getCacheKey(text, provider);
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ [key]: { data, timestamp: Date.now() } }, resolve);
-  });
-}
 
 // --- Init ---
 
@@ -357,19 +329,8 @@ async function openTooltip() {
   document.getElementById("vlClose")?.addEventListener("click", hideTooltip);
 
   try {
-    // Check cache first
-    const cached = await getCachedTranslation(word, provider);
-    if (cached) {
-      currentTranslation = cached;
-      showTranslationResult(word, cached);
-      return;
-    }
-
     const result = await callTranslateApi(word, provider, apiKey);
     currentTranslation = result;
-
-    // Cache for next time
-    setCachedTranslation(word, provider, result);
 
     showTranslationResult(word, result);
   } catch (error) {
