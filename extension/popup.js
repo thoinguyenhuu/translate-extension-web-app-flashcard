@@ -22,6 +22,12 @@ const elements = {
   loginBtn: document.getElementById("loginBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
   input: document.getElementById("wordInput"),
+  translateButton: document.getElementById("translateButton"),
+  translateResult: document.getElementById("translateResult"),
+  translatedWord: document.getElementById("translatedWord"),
+  translatedPos: document.getElementById("translatedPos"),
+  translatedMeaning: document.getElementById("translatedMeaning"),
+  translatedMeanings: document.getElementById("translatedMeanings"),
   meaningInput: document.getElementById("meaningInput"),
   posSelect: document.getElementById("posSelect"),
   saveButton: document.getElementById("saveButton"),
@@ -34,6 +40,7 @@ const elements = {
 
 let currentEntry = null;
 let currentSession = null;
+let currentTranslation = null; // last translate result
 let sessionPollInterval = null;
 
 // --- Session management ---
@@ -174,6 +181,7 @@ function clearStatus() {
 
 function setLoadingState(isLoading) {
   elements.input.disabled = isLoading;
+  elements.translateButton.disabled = isLoading;
   elements.saveButton.disabled = isLoading;
   elements.posSelect.disabled = isLoading;
   elements.meaningInput.disabled = isLoading;
@@ -247,6 +255,185 @@ function validateMeaning(rawMeaning) {
   if (!meaning) throw new Error("Enter a definition before saving.");
   if (meaning.length > CONFIG.maxMeaningLength) throw new Error(`Keep the definition under ${CONFIG.maxMeaningLength} characters.`);
   return meaning;
+}
+
+// --- Translation API ---
+
+function getApiSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(["translationProvider", "translationApiKey"], (result) => {
+      resolve({
+        provider: result.translationProvider || "gemini",
+        apiKey: result.translationApiKey || ""
+      });
+    });
+  });
+}
+
+function buildTranslatePrompt(word) {
+  return `You are a English-Vietnamese dictionary. For the English word "${word}", return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
+{
+  "pos": "the part of speech (noun/verb/adjective/adverb/preposition/conjunction/interjection/pronoun)",
+  "mainMeaning": "the primary Vietnamese translation",
+  "meanings": ["2-3 additional Vietnamese meanings or usage examples"]
+}`;
+}
+
+async function callGemini(word, apiKey) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildTranslatePrompt(word) }] }]
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini API error (${response.status}): ${err}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  // Strip markdown code fences if present
+  const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  return JSON.parse(cleaned);
+}
+
+async function translateWord(word) {
+  const { provider, apiKey } = await getApiSettings();
+  if (!apiKey) throw new Error("No API key configured. Open Settings to add one.");
+
+  const normalizedWord = normalizeWord(word);
+
+  if (provider === "gemini") {
+    return callGemini(normalizedWord, apiKey);
+  }
+
+  // For OpenAI-compatible providers (DeepSeek, OpenAI)
+  const endpoints = {
+    deepseek: "https://api.deepseek.com/v1/chat/completions",
+    openai: "https://api.openai.com/v1/chat/completions"
+  };
+
+  if (endpoints[provider]) {
+    const response = await fetch(endpoints[provider], {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: provider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini",
+        messages: [{ role: "user", content: buildTranslatePrompt(normalizedWord) }],
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`${provider} API error (${response.status}): ${err}`);
+    }
+
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content || "";
+    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    return JSON.parse(cleaned);
+  }
+
+  // Claude
+  if (provider === "claude") {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-3-5-haiku-latest",
+        max_tokens: 300,
+        messages: [{ role: "user", content: buildTranslatePrompt(normalizedWord) }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Claude API error (${response.status}): ${err}`);
+    }
+
+    const data = await response.json();
+    const text = data?.content?.[0]?.text || "";
+    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    return JSON.parse(cleaned);
+  }
+
+  throw new Error(`Unknown provider: ${provider}`);
+}
+
+function showTranslateResult(word, result) {
+  elements.translatedWord.textContent = word;
+  elements.translatedPos.textContent = result.pos;
+  elements.translatedMeaning.textContent = result.mainMeaning;
+
+  // Fill meanings list
+  const meanings = Array.isArray(result.meanings) ? result.meanings : [];
+  elements.translatedMeanings.textContent = "";
+  for (const m of meanings) {
+    const li = document.createElement("li");
+    li.textContent = m;
+    elements.translatedMeanings.appendChild(li);
+  }
+
+  elements.translateResult.style.display = "block";
+}
+
+function hideTranslateResult() {
+  elements.translateResult.style.display = "none";
+}
+
+async function handleTranslate() {
+  clearStatus();
+  hideTranslateResult();
+
+  const rawWord = elements.input.value.trim();
+  if (!rawWord) {
+    showStatus("Enter a word first.", "error");
+    return;
+  }
+
+  const word = normalizeWord(rawWord);
+  elements.translateButton.disabled = true;
+  elements.translateButton.textContent = "Translating...";
+
+  try {
+    const result = await translateWord(word);
+    currentTranslation = result;
+
+    // Auto-fill the form
+    showTranslateResult(word, result);
+
+    // Set POS if recognized
+    const normalizedPos = normalizePos(result.pos);
+    if (SUPPORTED_PARTS_OF_SPEECH.has(normalizedPos)) {
+      elements.posSelect.value = normalizedPos;
+    }
+
+    // Fill meaning
+    elements.meaningInput.value = result.mainMeaning;
+
+    showStatus("Translation ready. Edit if needed, then Save.", "success");
+    elements.meaningInput.focus();
+  } catch (error) {
+    showStatus(error.message || "Translation failed.", "error");
+    currentTranslation = null;
+  } finally {
+    elements.translateButton.disabled = false;
+    elements.translateButton.textContent = "Translate";
+  }
 }
 
 // --- Supabase operations ---
@@ -325,6 +512,8 @@ function clearForm() {
   elements.input.value = "";
   elements.posSelect.value = "";
   elements.meaningInput.value = "";
+  hideTranslateResult();
+  currentTranslation = null;
 }
 
 async function handleSave() {
@@ -335,15 +524,25 @@ async function handleSave() {
     const word = validateWord(elements.input.value);
     const selectedPos = validateSelectedPos(elements.posSelect.value);
     const mainMeaning = validateMeaning(elements.meaningInput.value);
+
+    // Use additional meanings from translation if available
+    const additionalMeanings = currentTranslation?.meanings
+      ? currentTranslation.meanings.filter((m) => m !== mainMeaning).slice(0, 2)
+      : [];
+
+    const allMeanings = [mainMeaning, ...additionalMeanings];
+
     const entry = await saveWordToSupabase({
       word, pos: selectedPos, mainMeaning,
-      meanings: [mainMeaning],
+      meanings: allMeanings,
       createdAt: new Date().toISOString()
     });
 
     renderEntry(entry, "Supabase");
     showStatus("Saved to Supabase.", "success");
     clearForm();
+    hideTranslateResult();
+    currentTranslation = null;
     focusInput();
   } catch (error) {
     showStatus(error.message || "Save failed.", "error");
@@ -355,10 +554,18 @@ async function handleSave() {
 function bindEvents() {
   elements.loginBtn.addEventListener("click", handleLogin);
   elements.settingsBtn.addEventListener("click", handleSettings);
+  elements.translateButton.addEventListener("click", handleTranslate);
   elements.saveButton.addEventListener("click", handleSave);
 
   elements.input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") handleSave();
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (elements.meaningInput.value) {
+        handleSave();
+      } else {
+        handleTranslate();
+      }
+    }
   });
 
   elements.meaningInput.addEventListener("keydown", (event) => {
@@ -366,7 +573,10 @@ function bindEvents() {
   });
 
   const clearFeedback = () => clearStatus();
-  elements.input.addEventListener("input", clearFeedback);
+  elements.input.addEventListener("input", () => {
+    clearFeedback();
+    hideTranslateResult();
+  });
   elements.meaningInput.addEventListener("input", clearFeedback);
 
   elements.posSelect.addEventListener("change", () => {

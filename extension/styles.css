@@ -166,3 +166,91 @@ body {
 .status-error {
   color: #b91c1c;
 }
+
+/* Word input with translate button */
+.word-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.word-input {
+  flex: 1;
+}
+
+.button-secondary {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #e8edf5;
+  color: #1f2937;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #dce3ef;
+}
+
+.button-secondary:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+/* Translate result preview */
+.translate-result {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f0f7ff;
+  border: 1px solid #d4e4f7;
+}
+
+.translate-result .result-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #3b7acb;
+}
+
+.translate-result .result-word {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.translate-result .result-meaning {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #14532d;
+}
+
+.translate-result .translated-pos {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #3b7acb;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.translate-result .meaning-list {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.translate-loading {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}

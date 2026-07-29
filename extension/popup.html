@@ -51,7 +51,19 @@
       <p class="subtitle">Add a word manually and save it straight to Supabase.</p>
 
       <label class="field-label" for="wordInput">English word</label>
-      <input id="wordInput" class="text-input" type="text" placeholder="Enter a word" autocomplete="off" />
+      <div class="word-input-row">
+        <input id="wordInput" class="text-input word-input" type="text" placeholder="Enter a word" autocomplete="off" />
+        <button id="translateButton" class="button button-secondary" type="button">Translate</button>
+      </div>
+
+      <!-- Translation result preview (auto-filled from API) -->
+      <section id="translateResult" class="translate-result" style="display:none">
+        <p class="result-label">Translation</p>
+        <p id="translatedWord" class="result-word"></p>
+        <p id="translatedPos" class="translated-pos"></p>
+        <p id="translatedMeaning" class="result-meaning"></p>
+        <ul id="translatedMeanings" class="meaning-list"></ul>
+      </section>
 
       <label class="field-label field-label-spaced" for="posSelect">Word type</label>
       <select id="posSelect" class="text-input select-input">
@@ -70,7 +82,7 @@
       <textarea id="meaningInput" class="text-input text-area-input" rows="4" placeholder="Enter the meaning or definition"></textarea>
 
       <div class="actions">
-        <button id="saveButton" class="button button-primary" type="button">Save to Supabase</button>
+        <button id="saveButton" class="button button-primary" type="button">Save</button>
       </div>
 
       <section class="result-card">
