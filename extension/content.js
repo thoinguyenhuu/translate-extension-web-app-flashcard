@@ -197,9 +197,13 @@ async function getApiSettings() {
 
 function getSession() {
   return new Promise((resolve) => {
-    chrome.storage.session.get(["supabaseSession"], (result) => {
-      resolve(result.supabaseSession || null);
-    });
+    try {
+      chrome.storage.session.get(["supabaseSession"], (result) => {
+        resolve(result?.supabaseSession || null);
+      });
+    } catch {
+      resolve(null);
+    }
   });
 }
 
@@ -312,7 +316,7 @@ async function openTooltip() {
     `);
     showTooltip(floatingIcon.offsetLeft, floatingIcon.offsetTop + 44);
     document.getElementById("vlOpenOptions")?.addEventListener("click", () => {
-      chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" });
+      chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" }).catch(() => {});
     });
     return;
   }
