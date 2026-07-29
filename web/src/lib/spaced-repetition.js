@@ -49,7 +49,11 @@ export function calculateNextReview(difficulty, currentEase, currentInterval) {
 }
 
 export async function saveReview(supabase, wordId, action, difficulty) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
   const { error } = await supabase.from("study_log").insert({
+    user_id: user.id,
     word_id: wordId,
     action,
     difficulty: difficulty || null
