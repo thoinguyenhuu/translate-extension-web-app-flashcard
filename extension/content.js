@@ -160,7 +160,7 @@ function handleMouseUp(e) {
     const selection = window.getSelection();
     const text = selection.toString().trim();
 
-    if (text && text.length >= 1 && text.length <= 200 && /^[a-zA-Z\s.,'?!-]+$/.test(text)) {
+    if (text && text.length >= 1 && /^[a-zA-Z\s.,'?!-]+$/.test(text)) {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       selectedText = text;
@@ -203,12 +203,23 @@ function getSession() {
   });
 }
 
-function buildPrompt(word) {
-  return `You are a English-Vietnamese dictionary. For the English word "${word}", return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
+function buildPrompt(text) {
+  const isSingleWord = /^[a-zA-Z]+(?:-[a-zA-Z]+)?$/.test(text.trim());
+
+  if (isSingleWord) {
+    return `You are a English-Vietnamese dictionary. For the English word "${text}", return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
 {
   "pos": "the part of speech (noun/verb/adjective/adverb/preposition/conjunction/interjection/pronoun)",
   "mainMeaning": "the primary Vietnamese translation",
   "meanings": ["2-3 additional Vietnamese meanings or usage examples"]
+}`;
+  }
+
+  return `You are a English-Vietnamese translator. Translate the following English text to Vietnamese. Return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
+{
+  "pos": "phrase",
+  "mainMeaning": "the complete Vietnamese translation of the text",
+  "meanings": []
 }`;
 }
 

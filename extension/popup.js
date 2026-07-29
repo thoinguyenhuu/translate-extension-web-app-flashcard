@@ -8,7 +8,7 @@ const CONFIG = {
   supabaseTable: runtimeConfig.supabaseTable || "vocabulary",
   webAppUrl: runtimeConfig.webAppUrl || "https://flashcard.thoint.site",
   maxWordLength: 50,
-  maxMeaningLength: 300
+  maxMeaningLength: 300,
 };
 
 const elements = {
@@ -25,7 +25,7 @@ const elements = {
   meaningsList: document.getElementById("meaningsList"),
   addMeaningBtn: document.getElementById("addMeaningBtn"),
   saveButton: document.getElementById("saveButton"),
-  statusMessage: document.getElementById("statusMessage")
+  statusMessage: document.getElementById("statusMessage"),
 };
 
 let currentEntry = null;
@@ -65,14 +65,17 @@ async function checkAuth() {
 
 async function refreshSession(refreshToken) {
   try {
-    const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
-      method: "POST",
-      headers: {
-        apikey: CONFIG.supabaseAnonKey,
-        "Content-Type": "application/json"
+    const response = await fetch(
+      `${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: "POST",
+        headers: {
+          apikey: CONFIG.supabaseAnonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
       },
-      body: JSON.stringify({ refresh_token: refreshToken })
-    });
+    );
 
     if (!response.ok) return false;
 
@@ -81,13 +84,15 @@ async function refreshSession(refreshToken) {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
-      user: data.user
+      user: data.user,
     };
 
     currentSession = session;
 
     return new Promise((resolve) => {
-      chrome.storage.session.set({ supabaseSession: session }, () => resolve(true));
+      chrome.storage.session.set({ supabaseSession: session }, () =>
+        resolve(true),
+      );
     });
   } catch {
     return false;
@@ -201,34 +206,48 @@ function collectMeanings() {
 
 function getApiSettings() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(["translationProvider", "translationApiKey"], (result) => {
-      resolve({
-        provider: result.translationProvider || "gemini",
-        apiKey: result.translationApiKey || ""
-      });
-    });
+    chrome.storage.sync.get(
+      ["translationProvider", "translationApiKey"],
+      (result) => {
+        resolve({
+          provider: result.translationProvider || "gemini",
+          apiKey: result.translationApiKey || "",
+        });
+      },
+    );
   });
 }
 
-function buildTranslatePrompt(word) {
-  return `You are a English-Vietnamese dictionary. For the English word "${word}", return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
+function buildTranslatePrompt(text) {
+  const isSingleWord = /^[a-zA-Z]+(?:-[a-zA-Z]+)?$/.test(text.trim());
+
+  if (isSingleWord) {
+    return `You are a English-Vietnamese dictionary. For the English word "${text}", return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
 {
   "pos": "the part of speech (noun/verb/adjective/adverb/preposition/conjunction/interjection/pronoun)",
   "mainMeaning": "the primary Vietnamese translation",
   "meanings": ["2-3 additional Vietnamese meanings or usage examples"]
 }`;
+  }
+
+  return `You are a English-Vietnamese translator. Translate the following English text to Vietnamese. Return ONLY valid JSON (no markdown, no explanation) with exactly these fields:
+{
+  "pos": "phrase",
+  "mainMeaning": "the complete Vietnamese translation of the text",
+  "meanings": []
+}`;
 }
 
 async function callGemini(word, apiKey) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: buildTranslatePrompt(word) }] }]
-      })
-    }
+        contents: [{ parts: [{ text: buildTranslatePrompt(word) }] }],
+      }),
+    },
   );
 
   if (!response.ok) {
@@ -239,13 +258,17 @@ async function callGemini(word, apiKey) {
 
   const data = await response.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  const cleaned = text
+    .replace(/```json\s*/g, "")
+    .replace(/```\s*/g, "")
+    .trim();
   return JSON.parse(cleaned);
 }
 
 async function translateWord(word) {
   const { provider, apiKey } = await getApiSettings();
-  if (!apiKey) throw new Error("No API key configured. Open Settings to add one.");
+  if (!apiKey)
+    throw new Error("No API key configured. Open Settings to add one.");
 
   const normalizedWord = normalizeWord(word);
 
@@ -255,7 +278,7 @@ async function translateWord(word) {
 
   const endpoints = {
     deepseek: "https://api.deepseek.com/v1/chat/completions",
-    openai: "https://api.openai.com/v1/chat/completions"
+    openai: "https://api.openai.com/v1/chat/completions",
   };
 
   if (endpoints[provider]) {
@@ -263,20 +286,25 @@ async function translateWord(word) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: provider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini",
-        messages: [{ role: "user", content: buildTranslatePrompt(normalizedWord) }],
-        temperature: 0.1
-      })
+        messages: [
+          { role: "user", content: buildTranslatePrompt(normalizedWord) },
+        ],
+        temperature: 0.1,
+      }),
     });
 
     if (!response.ok) throw new Error(`${provider} error (${response.status})`);
 
     const data = await response.json();
     const text = data?.choices?.[0]?.message?.content || "";
-    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const cleaned = text
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
     return JSON.parse(cleaned);
   }
 
@@ -286,20 +314,25 @@ async function translateWord(word) {
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model: "claude-3-5-haiku-latest",
         max_tokens: 300,
-        messages: [{ role: "user", content: buildTranslatePrompt(normalizedWord) }]
-      })
+        messages: [
+          { role: "user", content: buildTranslatePrompt(normalizedWord) },
+        ],
+      }),
     });
 
     if (!response.ok) throw new Error(`Claude error (${response.status})`);
 
     const data = await response.json();
     const text = data?.content?.[0]?.text || "";
-    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const cleaned = text
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
     return JSON.parse(cleaned);
   }
 
@@ -357,7 +390,9 @@ function normalizeWord(word) {
 }
 
 function cleanWord(word) {
-  return String(word || "").replace(/\s+/g, " ").trim();
+  return String(word || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function buildSupabaseUrl(pathname, queryParams) {
@@ -387,8 +422,8 @@ async function supabaseFetch(pathname, options = {}, queryParams) {
       apikey: CONFIG.supabaseAnonKey,
       Authorization: `Bearer ${currentSession.accessToken}`,
       "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
+      ...(options.headers || {}),
+    },
   });
 
   if (!response.ok) {
@@ -407,7 +442,7 @@ async function saveWordToSupabase(entry) {
     meaning: entry.mainMeaning,
     main_meaning: entry.mainMeaning,
     meanings: entry.meanings,
-    created_at: entry.createdAt
+    created_at: entry.createdAt,
   };
 
   const rows = await supabaseFetch(
@@ -415,9 +450,9 @@ async function saveWordToSupabase(entry) {
     {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify([payload])
+      body: JSON.stringify([payload]),
     },
-    { on_conflict: "user_id,word" }
+    { on_conflict: "user_id,word" },
   );
 
   return Array.isArray(rows) ? rows[0] : payload;
@@ -449,7 +484,7 @@ async function handleSave() {
       pos,
       mainMeaning,
       meanings: allMeanings,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     await saveWordToSupabase(entry);
