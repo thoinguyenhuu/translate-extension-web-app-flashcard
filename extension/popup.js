@@ -8,12 +8,18 @@ const CONFIG = {
   supabaseTable: runtimeConfig.supabaseTable || "vocabulary",
   webAppUrl: runtimeConfig.webAppUrl || "https://flashcard.thoint.site",
   maxWordLength: 50,
-  maxMeaningLength: 300
+  maxMeaningLength: 300,
 };
 
 const SUPPORTED_PARTS_OF_SPEECH = new Set([
-  "noun", "pronoun", "verb", "adjective", "adverb",
-  "preposition", "conjunction", "interjection"
+  "noun",
+  "pronoun",
+  "verb",
+  "adjective",
+  "adverb",
+  "preposition",
+  "conjunction",
+  "interjection",
 ]);
 
 const elements = {
@@ -35,7 +41,7 @@ const elements = {
   resultMeaning: document.getElementById("resultMeaning"),
   resultMeaningList: document.getElementById("resultMeaningList"),
   resultMeta: document.getElementById("resultMeta"),
-  statusMessage: document.getElementById("statusMessage")
+  statusMessage: document.getElementById("statusMessage"),
 };
 
 let currentEntry = null;
@@ -77,14 +83,17 @@ async function checkAuth() {
 
 async function refreshSession(refreshToken) {
   try {
-    const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
-      method: "POST",
-      headers: {
-        apikey: CONFIG.supabaseAnonKey,
-        "Content-Type": "application/json"
+    const response = await fetch(
+      `${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: "POST",
+        headers: {
+          apikey: CONFIG.supabaseAnonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
       },
-      body: JSON.stringify({ refresh_token: refreshToken })
-    });
+    );
 
     if (!response.ok) return false;
 
@@ -93,13 +102,15 @@ async function refreshSession(refreshToken) {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
-      user: data.user
+      user: data.user,
     };
 
     currentSession = session;
 
     return new Promise((resolve) => {
-      chrome.storage.session.set({ supabaseSession: session }, () => resolve(true));
+      chrome.storage.session.set({ supabaseSession: session }, () =>
+        resolve(true),
+      );
     });
   } catch {
     return false;
@@ -154,7 +165,9 @@ function normalizeWord(word) {
 }
 
 function cleanWord(word) {
-  return String(word || "").replace(/\s+/g, " ").trim();
+  return String(word || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizePos(pos) {
@@ -210,17 +223,25 @@ function normalizeEntry(entry, fallbackWord) {
 
   const word = cleanWord(entry.word || fallbackWord || "");
   const pos = cleanWord(entry.pos || "unknown");
-  const mainMeaning = cleanWord(entry.mainMeaning || entry.main_meaning || entry.meaning || "");
+  const mainMeaning = cleanWord(
+    entry.mainMeaning || entry.main_meaning || entry.meaning || "",
+  );
   const meanings = Array.isArray(entry.meanings)
-    ? entry.meanings.map((item) => cleanWord(item)).filter(Boolean).slice(0, 3)
+    ? entry.meanings
+        .map((item) => cleanWord(item))
+        .filter(Boolean)
+        .slice(0, 3)
     : [];
 
   if (mainMeaning && !meanings.length) meanings.push(mainMeaning);
   if (!word || !mainMeaning) return null;
 
   return {
-    word, pos, mainMeaning, meanings,
-    createdAt: entry.createdAt || entry.created_at || new Date().toISOString()
+    word,
+    pos,
+    mainMeaning,
+    meanings,
+    createdAt: entry.createdAt || entry.created_at || new Date().toISOString(),
   };
 }
 
@@ -238,7 +259,8 @@ function renderEntry(entry, source) {
 function resetResult() {
   currentEntry = null;
   elements.resultWord.textContent = "No word saved yet";
-  elements.resultMeaning.textContent = "Fill the form above and save it to Supabase.";
+  elements.resultMeaning.textContent =
+    "Fill the form above and save it to Supabase.";
   elements.resultMeta.textContent = "";
   setMeaningList([]);
 }
@@ -246,14 +268,18 @@ function resetResult() {
 function validateWord(rawWord) {
   const word = cleanWord(rawWord);
   if (!word) throw new Error("Enter a word before saving.");
-  if (word.length > CONFIG.maxWordLength) throw new Error(`Keep the word under ${CONFIG.maxWordLength} characters.`);
+  if (word.length > CONFIG.maxWordLength)
+    throw new Error(`Keep the word under ${CONFIG.maxWordLength} characters.`);
   return normalizeWord(word);
 }
 
 function validateMeaning(rawMeaning) {
   const meaning = cleanWord(rawMeaning);
   if (!meaning) throw new Error("Enter a definition before saving.");
-  if (meaning.length > CONFIG.maxMeaningLength) throw new Error(`Keep the definition under ${CONFIG.maxMeaningLength} characters.`);
+  if (meaning.length > CONFIG.maxMeaningLength)
+    throw new Error(
+      `Keep the definition under ${CONFIG.maxMeaningLength} characters.`,
+    );
   return meaning;
 }
 
@@ -261,12 +287,15 @@ function validateMeaning(rawMeaning) {
 
 function getApiSettings() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(["translationProvider", "translationApiKey"], (result) => {
-      resolve({
-        provider: result.translationProvider || "gemini",
-        apiKey: result.translationApiKey || ""
-      });
-    });
+    chrome.storage.sync.get(
+      ["translationProvider", "translationApiKey"],
+      (result) => {
+        resolve({
+          provider: result.translationProvider || "gemini",
+          apiKey: result.translationApiKey || "",
+        });
+      },
+    );
   });
 }
 
@@ -281,14 +310,14 @@ function buildTranslatePrompt(word) {
 
 async function callGemini(word, apiKey) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-8b:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: buildTranslatePrompt(word) }] }]
-      })
-    }
+        contents: [{ parts: [{ text: buildTranslatePrompt(word) }] }],
+      }),
+    },
   );
 
   if (!response.ok) {
@@ -299,13 +328,17 @@ async function callGemini(word, apiKey) {
   const data = await response.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
   // Strip markdown code fences if present
-  const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  const cleaned = text
+    .replace(/```json\s*/g, "")
+    .replace(/```\s*/g, "")
+    .trim();
   return JSON.parse(cleaned);
 }
 
 async function translateWord(word) {
   const { provider, apiKey } = await getApiSettings();
-  if (!apiKey) throw new Error("No API key configured. Open Settings to add one.");
+  if (!apiKey)
+    throw new Error("No API key configured. Open Settings to add one.");
 
   const normalizedWord = normalizeWord(word);
 
@@ -316,7 +349,7 @@ async function translateWord(word) {
   // For OpenAI-compatible providers (DeepSeek, OpenAI)
   const endpoints = {
     deepseek: "https://api.deepseek.com/v1/chat/completions",
-    openai: "https://api.openai.com/v1/chat/completions"
+    openai: "https://api.openai.com/v1/chat/completions",
   };
 
   if (endpoints[provider]) {
@@ -324,13 +357,15 @@ async function translateWord(word) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: provider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini",
-        messages: [{ role: "user", content: buildTranslatePrompt(normalizedWord) }],
-        temperature: 0.1
-      })
+        messages: [
+          { role: "user", content: buildTranslatePrompt(normalizedWord) },
+        ],
+        temperature: 0.1,
+      }),
     });
 
     if (!response.ok) {
@@ -340,7 +375,10 @@ async function translateWord(word) {
 
     const data = await response.json();
     const text = data?.choices?.[0]?.message?.content || "";
-    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const cleaned = text
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
     return JSON.parse(cleaned);
   }
 
@@ -351,13 +389,15 @@ async function translateWord(word) {
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model: "claude-3-5-haiku-latest",
         max_tokens: 300,
-        messages: [{ role: "user", content: buildTranslatePrompt(normalizedWord) }]
-      })
+        messages: [
+          { role: "user", content: buildTranslatePrompt(normalizedWord) },
+        ],
+      }),
     });
 
     if (!response.ok) {
@@ -367,7 +407,10 @@ async function translateWord(word) {
 
     const data = await response.json();
     const text = data?.content?.[0]?.text || "";
-    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const cleaned = text
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
     return JSON.parse(cleaned);
   }
 
@@ -453,7 +496,9 @@ function buildSupabaseUrl(pathname, queryParams) {
 
 async function supabaseFetch(pathname, options = {}, queryParams) {
   if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) {
-    throw new Error("Supabase config is missing. Generate extension/config.js from .env first.");
+    throw new Error(
+      "Supabase config is missing. Generate extension/config.js from .env first.",
+    );
   }
   if (!currentSession?.accessToken) {
     throw new Error("Not authenticated. Please sign in first.");
@@ -465,17 +510,23 @@ async function supabaseFetch(pathname, options = {}, queryParams) {
       apikey: CONFIG.supabaseAnonKey,
       Authorization: `Bearer ${currentSession.accessToken}`,
       "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
+      ...(options.headers || {}),
+    },
   });
 
   if (!response.ok) {
     const errorText = await response.text();
     let parsedError = null;
-    try { parsedError = JSON.parse(errorText); } catch { parsedError = null; }
+    try {
+      parsedError = JSON.parse(errorText);
+    } catch {
+      parsedError = null;
+    }
 
     if (parsedError?.code === "42703") {
-      throw new Error("Supabase schema is outdated. Run supabase/schema.sql, then retry.");
+      throw new Error(
+        "Supabase schema is outdated. Run supabase/schema.sql, then retry.",
+      );
     }
 
     throw new Error(`Supabase request failed: ${errorText || response.status}`);
@@ -492,7 +543,7 @@ async function saveWordToSupabase(entry) {
     meaning: entry.mainMeaning,
     main_meaning: entry.mainMeaning,
     meanings: entry.meanings,
-    created_at: entry.createdAt
+    created_at: entry.createdAt,
   };
 
   const rows = await supabaseFetch(
@@ -500,9 +551,9 @@ async function saveWordToSupabase(entry) {
     {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify([payload])
+      body: JSON.stringify([payload]),
     },
-    { on_conflict: "word" }
+    { on_conflict: "user_id,word" },
   );
 
   return normalizeEntry(Array.isArray(rows) ? rows[0] : payload, entry.word);
@@ -533,9 +584,11 @@ async function handleSave() {
     const allMeanings = [mainMeaning, ...additionalMeanings];
 
     const entry = await saveWordToSupabase({
-      word, pos: selectedPos, mainMeaning,
+      word,
+      pos: selectedPos,
+      mainMeaning,
       meanings: allMeanings,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     });
 
     renderEntry(entry, "Supabase");
