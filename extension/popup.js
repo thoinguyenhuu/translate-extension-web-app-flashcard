@@ -221,7 +221,7 @@ function buildTranslatePrompt(word) {
 
 async function callGemini(word, apiKey) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-8b:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -233,6 +233,7 @@ async function callGemini(word, apiKey) {
 
   if (!response.ok) {
     const err = await response.text();
+    console.error("Gemini API error:", err);
     throw new Error(`Gemini error (${response.status})`);
   }
 
