@@ -34,6 +34,16 @@ let sessionPollInterval = null;
 
 // --- Session management ---
 
+function isTokenExpired(token) {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 function getStoredSession() {
   return new Promise((resolve) => {
     chrome.storage.session.get(["supabaseSession"], (result) => {
@@ -56,12 +66,19 @@ async function checkAuth() {
     return false;
   }
 
-  if (session.expiresAt && Date.now() > session.expiresAt) {
+  const expired = session.expiresAt
+    ? Date.now() > session.expiresAt
+    : isTokenExpired(session.accessToken);
+
+  if (expired) {
     const refreshed = await refreshSession(session.refreshToken);
     if (!refreshed) {
       showAuthGate();
       return false;
     }
+    // refreshSession() already set currentSession to the new session
+    hideAuthGate();
+    return true;
   }
 
   currentSession = session;
@@ -422,7 +439,7 @@ async function supabaseFetch(pathname, options = {}, queryParams) {
     throw new Error("Not authenticated. Sign in first.");
   }
 
-  const response = await fetch(buildSupabaseUrl(pathname, queryParams), {
+  let response = await fetch(buildSupabaseUrl(pathname, queryParams), {
     ...options,
     headers: {
       apikey: CONFIG.supabaseAnonKey,
@@ -432,9 +449,26 @@ async function supabaseFetch(pathname, options = {}, queryParams) {
     },
   });
 
+  // Auto-refresh on 401 and retry once
+  if (response.status === 401 && currentSession.refreshToken) {
+    const refreshed = await refreshSession(currentSession.refreshToken);
+    if (refreshed) {
+      response = await fetch(buildSupabaseUrl(pathname, queryParams), {
+        ...options,
+        headers: {
+          apikey: CONFIG.supabaseAnonKey,
+          Authorization: `Bearer ${currentSession.accessToken}`,
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        },
+      });
+    }
+  }
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Supabase request failed: ${errorText || response.status}`);
+    console.error("Supabase request failed:", errorText);
+    throw new Error("Save failed. Please try again.");
   }
 
   if (response.status === 204) return null;

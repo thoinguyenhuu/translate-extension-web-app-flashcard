@@ -218,6 +218,54 @@ function getSession() {
   });
 }
 
+function isTokenExpired(token) {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
+async function refreshToken(refreshToken) {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const session = {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+      user: data.user,
+    };
+
+    // Store updated session
+    await new Promise((resolve) => {
+      chrome.storage.session.set({ supabaseSession: session }, () => {
+        chrome.storage.local.set({ supabaseSession: session }, () => resolve());
+      });
+    });
+
+    return session;
+  } catch (e) {
+    console.error("Token refresh failed:", e);
+    return null;
+  }
+}
+
 function buildPrompt(text) {
   const isSingleWord = /^[a-zA-Z]+(?:-[a-zA-Z]+)?$/.test(text.trim());
 
@@ -364,7 +412,7 @@ async function openTooltip() {
 // --- Save ---
 
 async function handleSave() {
-  const session = await getSession();
+  let session = await getSession();
   if (!session?.accessToken) {
     const word = selectedText.trim().toLowerCase();
     setTooltipContent(`
@@ -377,6 +425,25 @@ async function handleSave() {
     showTooltip(floatingIcon.offsetLeft, floatingIcon.offsetTop + 44);
     document.getElementById("vlClose")?.addEventListener("click", hideTooltip);
     return;
+  }
+
+  // Check token expiry and refresh if needed
+  if (isTokenExpired(session.accessToken)) {
+    const newSession = await refreshToken(session.refreshToken);
+    if (!newSession) {
+      const word = selectedText.trim().toLowerCase();
+      setTooltipContent(`
+        <div class="vl-card-header">
+          <span><span class="vl-card-word">${escapeHtml(word)}</span></span>
+          <button class="vl-card-close" id="vlClose">×</button>
+        </div>
+        <div class="vl-card-error">Session expired. Please sign in again from the extension popup.</div>
+      `);
+      showTooltip(floatingIcon.offsetLeft, floatingIcon.offsetTop + 44);
+      document.getElementById("vlClose")?.addEventListener("click", hideTooltip);
+      return;
+    }
+    session = newSession;
   }
 
   const saveBtn = document.getElementById("vlSave");
@@ -415,6 +482,7 @@ async function handleSave() {
 
     if (!res.ok) {
       const err = await res.text();
+      console.error("Supabase save failed:", err);
       throw new Error(err);
     }
 
@@ -426,6 +494,7 @@ async function handleSave() {
 
     setTimeout(hideTooltip, 1200);
   } catch (error) {
+    console.error("Save error:", error);
     if (saveBtn) {
       saveBtn.disabled = false;
       saveBtn.textContent = "Save failed — try again";
